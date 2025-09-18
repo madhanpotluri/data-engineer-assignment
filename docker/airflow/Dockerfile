@@ -1,17 +1,21 @@
 # Use the official Apache Airflow image as the base
 FROM apache/airflow:2.8.1-python3.11
 
-# Switch to the root user to install system dependencies if needed
+# Switch to the root user to install system dependencies
 USER root
 
-# Install any system packages for connecting to databases, etc.
-# For psycopg2, we need libpq-dev
+# Install the PostgreSQL client to use `pg_isready`
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+    postgresql-client \
     libpq-dev \
     && apt-get autoremove -yqq --purge \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy the entrypoint script and set its permissions
+COPY ./docker/airflow/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Switch back to the 'airflow' user
 USER airflow
@@ -26,5 +30,6 @@ RUN pip install --no-cache-dir -r /requirements.txt
 COPY dags/ /opt/airflow/dags/
 COPY scripts/ /opt/airflow/scripts/
 
-# Set the home directory
-WORKDIR /opt/airflow
+# Set the entrypoint to our custom script
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["webserver"]
