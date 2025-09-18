@@ -37,6 +37,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts
       - ./logs:/opt/airflow/logs
+      - /var/run/docker.sock:/var/run/docker.sock
     command: ["webserver"]
 
   airflow-scheduler:
@@ -58,6 +59,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts
       - ./logs:/opt/airflow/logs
+      - /var/run/docker.sock:/var/run/docker.sock
     command: ["scheduler"]
 
   # 3. Apache Spark Cluster Services
@@ -77,6 +79,25 @@ services:
     container_name: spark-worker-1
     depends_on:
       - spark-master
+
+  # 4. Data Visualization Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: ./docker/dashboard/Dockerfile
+    container_name: iot-dashboard
+    restart: always
+    ports:
+      - "8501:8501"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=iot_data
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
 
 volumes:
   postgres-data: {}
