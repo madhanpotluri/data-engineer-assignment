@@ -14,6 +14,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the entrypoint script and set its permissions
+# The path is now relative to the project root
 COPY ./docker/airflow/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
@@ -21,12 +22,14 @@ RUN chmod +x /entrypoint.sh
 USER airflow
 
 # Copy the requirements file into the container
+# The path is now relative to the project root
 COPY ./docker/airflow/requirements.txt /requirements.txt
 
 # Install Python packages from the requirements file
 RUN pip install --no-cache-dir -r /requirements.txt
 
 # Copy DAGs and other project files into the image
+# These paths are now relative to the project root
 COPY dags/ /opt/airflow/dags/
 COPY scripts/ /opt/airflow/scripts/
 
