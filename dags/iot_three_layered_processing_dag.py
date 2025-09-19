@@ -62,7 +62,7 @@ def run_three_layered_pipeline(batch_file_path):
     try:
         print(f"🏗️  Running three-layered pipeline on: {batch_file_path}")
         result = subprocess.run([
-            'python3', '/opt/airflow/scripts/iot_data_simulation_pipeline.py',
+            'python3', '/opt/airflow/scripts/iot_three_layered_pipeline.py',
             '--batch-file', batch_file_path,
             '--output-db', 'postgres'
         ], capture_output=True, text=True)
