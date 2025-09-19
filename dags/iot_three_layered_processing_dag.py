@@ -92,7 +92,8 @@ def process_accumulated_data():
         if "Batch file:" in processor_output:
             for line in processor_output.split('\n'):
                 if "Batch file:" in line:
-                    batch_file_path = line.split("Batch file:")[1].strip()
+                    batch_filename = line.split("Batch file:")[1].strip()
+                    batch_file_path = f"/data/processed/{batch_filename}"
                     break
         
         if batch_file_path and os.path.exists(batch_file_path):
