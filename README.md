@@ -107,6 +107,10 @@ Raw layer preserves original data for debugging/compliance, cleaned layer standa
 data-engineer-assignment/
 ├── dags/                          # Airflow DAG definitions
 ├── scripts/                       # Core processing scripts
+│   ├── iot_simulator.py          # IoT data generation
+│   ├── iot_three_layered_pipeline.py # Three-layered processing
+│   ├── checkpoint_processor.py   # Checkpoint management
+│   └── dashboard.py              # Streamlit dashboard
 ├── data/                         # Data storage
 ├── docker/                       # Container configurations
 └── docker-compose.yml           # Service orchestration

@@ -52,6 +52,7 @@ def main():
         with col3:
             anomaly_count = pd.read_sql("SELECT COUNT(*) as count FROM cleaneddata_iot_sensors WHERE is_anomaly = 'True'", conn).iloc[0]['count']
             st.metric("Anomalies Detected", anomaly_count)
+            st.write(f"Debug: Found {anomaly_count} anomalies")
         
         # Anomaly detection section
         st.subheader("Anomaly Detection")

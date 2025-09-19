@@ -58,13 +58,13 @@ def run_checkpoint_processor():
         raise e
 
 def run_three_layered_pipeline(batch_file_path):
-    """Run three-layered pipeline on batch file"""
+    """Run three-layered pipeline on batch file using Spark container"""
     try:
         print(f"🏗️  Running three-layered pipeline on: {batch_file_path}")
         result = subprocess.run([
-            'python3', '/opt/airflow/scripts/iot_three_layered_pipeline.py',
-            '--batch-file', batch_file_path,
-            '--output-db', 'postgres'
+            'docker', 'exec', 'spark-master', 'python3', '/scripts/iot_three_layered_pipeline.py',
+            '--input_path', batch_file_path,
+            '--output_db', 'postgres'
         ], capture_output=True, text=True)
         
         if result.returncode == 0:

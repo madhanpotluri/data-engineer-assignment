@@ -42,6 +42,9 @@ class CheckpointProcessor:
                 with open(self.checkpoint_file, 'r') as f:
                     checkpoint_data = json.load(f)
                 last_processed = datetime.fromisoformat(checkpoint_data['last_processed'])
+                # Ensure timezone-aware datetime
+                if last_processed.tzinfo is None:
+                    last_processed = last_processed.replace(tzinfo=timezone.utc)
                 processed_files = set(checkpoint_data.get('processed_files', []))
                 logger.info(f"📅 Last processed: {last_processed}")
                 logger.info(f"📁 Processed files: {len(processed_files)}")
@@ -58,7 +61,7 @@ class CheckpointProcessor:
         checkpoint_data = {
             'last_processed': timestamp.isoformat(),
             'processed_files': list(processed_files),
-            'checkpoint_created': datetime.now().isoformat()
+            'checkpoint_created': datetime.now(timezone.utc).isoformat()
         }
         
         try:
@@ -90,7 +93,7 @@ class CheckpointProcessor:
             # Filter files modified after checkpoint
             new_files = []
             for file_path in unprocessed_files:
-                file_mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
+                file_mtime = datetime.fromtimestamp(os.path.getmtime(file_path), tz=timezone.utc)
                 if file_mtime > since_timestamp:
                     new_files.append(file_path)
         
@@ -189,7 +192,7 @@ class CheckpointProcessor:
                 new_processed_files.add(file_name)
             
             # Update checkpoint
-            current_time = datetime.now()
+            current_time = datetime.now(timezone.utc)
             self.save_checkpoint(current_time, new_processed_files)
             
             logger.info(f"✅ Batch processing completed:")

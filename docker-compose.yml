@@ -72,7 +72,10 @@ services:
     container_name: spark-master
     ports:
       - "7077:7077"
-      - "8081:8080" 
+      - "8081:8080"
+    volumes:
+      - ./data:/data
+      - ./scripts:/scripts 
 
   spark-worker:
     build:
@@ -81,6 +84,9 @@ services:
     container_name: spark-worker-1
     depends_on:
       - spark-master
+    volumes:
+      - ./data:/data
+      - ./scripts:/scripts
 
   # 4. Data Visualization Dashboard
   dashboard:
