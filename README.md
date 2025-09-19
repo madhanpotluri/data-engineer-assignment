@@ -13,7 +13,7 @@ The project addresses the core challenge of ingesting IoT sensor data into a rel
 
 ```
 
-IoT Sensors → Landing Zone → Data Pipeline (Apache Airflow & Spark) → PostgreSQL → Dashboard
+IoT Sensors → Landing Zone → ELT Pipeline (Apache Airflow & Spark) → PostgreSQL → Dashboard
 ```
 
 ### Three-Layered (Medallion) Data Processing
@@ -61,7 +61,7 @@ Cron jobs work for simple tasks, but fail with complex data workflows. Airflow h
 
 **Used:** Apache Spark for distributed data processing
 
-For small datasets, regular Python works fine. But when you're dealing with IoT data that can generate millions of records, Spark processes data in chunks (handles datasets larger than RAM), processes multiple files in parallel, automatically redistributes work if a node crashes, and scales horizontally without rewriting code.
+For small datasets, regular Python works fine. But when you're dealing with IoT data that can generate millions of records, Spark processes data in chunks (handles datasets larger than RAM), processes multiple files in parallel, automatically redistributes work if a node crashes, scales horizontally without rewriting code, and has dynamic schema inference - if new sensor parameters or columns get added, the pipeline adapts automatically without code changes.
 
 ### Why separate Spark Master and Worker nodes?
 
@@ -74,6 +74,12 @@ Master node acts like a traffic controller - receives jobs, breaks them into tas
 **Used:** Docker containers for easy scaling
 
 Just spin up new Spark worker containers and register with master (no code changes). Configure memory/CPU per worker, Spark auto-distributes work based on capacity, set up auto-scaling in cloud, and partition data across more nodes for better performance.
+
+### Why ELT over ETL for IoT data?
+
+**Used:** ELT (Extract, Load, Transform) approach for big data processing
+
+Traditional ETL transforms data before loading, but IoT data is massive and comes in various formats. ELT loads raw data first, then transforms it in the database. This approach gives you faster ingestion (no transformation delays), preserves original data for debugging, handles schema changes easily, scales better with big data, and lets you reprocess data with different transformations without re-ingesting.
 
 ### Why the three-layer architecture?
 
@@ -100,17 +106,8 @@ Raw layer preserves original data for debugging/compliance, cleaned layer standa
 ```
 data-engineer-assignment/
 ├── dags/                          # Airflow DAG definitions
-│   ├── iot_simulation_only_dag.py
-│   └── iot_three_layered_processing_dag.py
 ├── scripts/                       # Core processing scripts
-│   ├── iot_simulator.py          # IoT data generation
-│   ├── simple_batch_processor.py # Batch processing logic
-│   ├── checkpoint_processor.py   # Checkpoint management
-│   └── dashboard.py              # Streamlit dashboard
 ├── data/                         # Data storage
-│   ├── landing_zone/             # Raw data ingestion
-│   ├── processed/                # Processed data batches
-│   └── checkpoints/              # Processing state tracking
 ├── docker/                       # Container configurations
 └── docker-compose.yml           # Service orchestration
 ```
