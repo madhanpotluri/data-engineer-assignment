@@ -53,6 +53,53 @@ def main():
             anomaly_count = pd.read_sql("SELECT COUNT(*) as count FROM cleaneddata_iot_sensors WHERE is_anomaly = 'True'", conn).iloc[0]['count']
             st.metric("Anomalies Detected", anomaly_count)
         
+        # Gold layer metrics
+        st.subheader("Gold Layer Analytics")
+        
+        # Device metrics
+        try:
+            device_metrics = pd.read_sql("SELECT * FROM analyticsdata_device_metrics", conn)
+            if not device_metrics.empty:
+                st.write("**Device Metrics**")
+                st.dataframe(device_metrics)
+            else:
+                st.info("No device metrics available")
+        except Exception as e:
+            st.warning(f"Device metrics not available: {e}")
+        
+        # Location metrics
+        try:
+            location_metrics = pd.read_sql("SELECT * FROM analyticsdata_location_metrics", conn)
+            if not location_metrics.empty:
+                st.write("**Location Metrics**")
+                st.dataframe(location_metrics)
+            else:
+                st.info("No location metrics available")
+        except Exception as e:
+            st.warning(f"Location metrics not available: {e}")
+        
+        # Time metrics
+        try:
+            time_metrics = pd.read_sql("SELECT * FROM analyticsdata_time_metrics", conn)
+            if not time_metrics.empty:
+                st.write("**Time Metrics**")
+                st.dataframe(time_metrics)
+            else:
+                st.info("No time metrics available")
+        except Exception as e:
+            st.warning(f"Time metrics not available: {e}")
+        
+        # Quality summary
+        try:
+            quality_summary = pd.read_sql("SELECT * FROM analyticsdata_quality_summary", conn)
+            if not quality_summary.empty:
+                st.write("**Data Quality Summary**")
+                st.dataframe(quality_summary)
+            else:
+                st.info("No quality summary available")
+        except Exception as e:
+            st.warning(f"Quality summary not available: {e}")
+        
         # Anomaly detection section
         st.subheader("Anomaly Detection")
         
@@ -106,6 +153,40 @@ def main():
             st.dataframe(recent_anomalies)
         else:
             st.info("No anomalies found in the data")
+        
+        # Data flow summary
+        st.subheader("Data Flow Summary")
+        
+        # Three-layer overview
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.write("**Bronze Layer (Raw Data)**")
+            st.metric("Records", raw_count)
+            st.write("Raw IoT sensor data as-is")
+        
+        with col2:
+            st.write("**Silver Layer (Cleaned Data)**")
+            st.metric("Records", cleaned_count)
+            st.write("Data quality checks and validation")
+        
+        with col3:
+            st.write("**Gold Layer (Analytics)**")
+            try:
+                # Count total analytics records
+                analytics_count = 0
+                for table in ['analyticsdata_device_metrics', 'analyticsdata_location_metrics', 
+                            'analyticsdata_time_metrics', 'analyticsdata_quality_summary']:
+                    try:
+                        count = pd.read_sql(f"SELECT COUNT(*) as count FROM {table}", conn).iloc[0]['count']
+                        analytics_count += count
+                    except:
+                        pass
+                st.metric("Analytics Records", analytics_count)
+                st.write("Aggregated data for analytics")
+            except:
+                st.metric("Analytics Records", "N/A")
+                st.write("Aggregated data for analytics")
         
         # Sample raw data
         st.subheader("Sample Raw Data")
