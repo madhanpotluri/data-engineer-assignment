@@ -6,10 +6,13 @@ FROM bitnami/spark:3.5.1
 USER root
 
 # Install system dependencies and Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
     python3-dev \
     build-essential \
     wget \
+    && apt-get autoremove -yqq --purge \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create jars directory and download PostgreSQL JDBC driver
@@ -32,8 +35,18 @@ COPY data/ /data/
 # Set proper permissions
 RUN chmod -R 755 /scripts /data
 
+# Create necessary directories and set ownership
+RUN mkdir -p /home/1001/.ivy2/local /tmp/spark-local /tmp/spark-warehouse && \
+    chown -R 1001:1001 /home/1001 /tmp/spark-local /tmp/spark-warehouse
+
 # Switch back to the default user
 USER 1001
+
+# Set environment variables for proper Spark operation
+ENV HOME=/home/1001
+ENV IVY_LOCAL_REPO=/home/1001/.ivy2/local
+ENV SPARK_LOCAL_DIR=/tmp/spark-local
+ENV SPARK_WAREHOUSE_DIR=/tmp/spark-warehouse
 
 # Command to start the Spark master
 CMD ["/opt/bitnami/spark/bin/spark-class", "org.apache.spark.deploy.master.Master", "--host", "0.0.0.0", "--port", "7077", "--webui-port", "8080"]

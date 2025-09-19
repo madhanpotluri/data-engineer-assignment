@@ -6,10 +6,13 @@ FROM bitnami/spark:3.5.1
 USER root
 
 # Install system dependencies and Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
     python3-dev \
     build-essential \
     wget \
+    && apt-get autoremove -yqq --purge \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create jars directory and download PostgreSQL JDBC driver
