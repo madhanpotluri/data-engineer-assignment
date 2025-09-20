@@ -22,6 +22,7 @@ def create_spark_session():
     return SparkSession.builder \
         .appName("IoT-Medallion-Pipeline-Checkpoint") \
         .config("spark.jars", "/opt/spark/jars/postgresql-42.5.0.jar") \
+        .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
         .getOrCreate()
 
 def create_dynamic_table_schema(spark, df, table_name, db_url, db_properties):
