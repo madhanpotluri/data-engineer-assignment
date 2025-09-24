@@ -47,10 +47,13 @@ def run_checkpoint_processor():
         
         if result.returncode == 0:
             print("✅ Checkpoint Processor completed successfully")
-            print(result.stdout)
-            return result.stdout
+            print("STDOUT:", result.stdout)
+            print("STDERR:", result.stderr)
+            # Return both stdout and stderr combined
+            return result.stdout + "\n" + result.stderr
         else:
             print(f"❌ Checkpoint Processor failed: {result.stderr}")
+            print(f"STDOUT: {result.stdout}")
             raise Exception(f"Checkpoint processor failed: {result.stderr}")
             
     except Exception as e:
@@ -63,8 +66,8 @@ def run_three_layered_pipeline(batch_file_path):
         print(f"🏗️  Running three-layered pipeline on: {batch_file_path}")
         result = subprocess.run([
             'docker', 'exec', 'spark-master', 'python3', '/scripts/iot_three_layered_pipeline.py',
-            '--input_path', batch_file_path,
-            '--output_db', 'postgres'
+            '--batch-file', batch_file_path,
+            '--output-db', 'postgres'
         ], capture_output=True, text=True)
         
         if result.returncode == 0:

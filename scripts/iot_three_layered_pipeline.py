@@ -964,8 +964,32 @@ def analyticsdata_layer_processing(spark, df_cleaneddata, db_url, db_properties)
         from pyspark.sql.functions import count, avg, min, max, stddev, hour, to_timestamp, col, lit, current_timestamp
         from datetime import datetime
         
-        # Device metrics
-        df_device_metrics = df_cleaneddata.groupBy("room_id/id") \
+        # BUG FIX: Read ALL cleaned data from database instead of just current batch
+        logger.info("🔍 Reading all cleaned data from database for comprehensive analytics...")
+        try:
+            # Read all cleaned data from the database table
+            df_all_cleaned_data = spark.read \
+                .format("jdbc") \
+                .option("url", db_url) \
+                .option("dbtable", "cleaneddata_iot_sensors") \
+                .option("user", db_properties["user"]) \
+                .option("password", db_properties["password"]) \
+                .load()
+            
+            total_records_in_db = df_all_cleaned_data.count()
+            current_batch_records = df_cleaneddata.count()
+            logger.info(f"📊 Analytics will process {total_records_in_db} total records (including {current_batch_records} from current batch)")
+            
+            # Use all cleaned data for analytics
+            analytics_source_data = df_all_cleaned_data
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Could not read from cleaneddata_iot_sensors table: {e}")
+            logger.warning("⚠️ Falling back to current batch data only")
+            analytics_source_data = df_cleaneddata
+        
+        # Device metrics - now using ALL cleaned data
+        df_device_metrics = analytics_source_data.groupBy("room_id/id") \
             .agg(
                 count("*").alias("reading_count"),
                 avg("temp").alias("avg_temperature"),
@@ -973,42 +997,46 @@ def analyticsdata_layer_processing(spark, df_cleaneddata, db_url, db_properties)
                 max("temp").alias("max_temperature"),
                 stddev("temp").alias("temp_stddev")
             ) \
-            .withColumn("analyticsdata_layer_version", lit("1.0")) \
-            .withColumn("created_timestamp", current_timestamp())
+            .withColumn("analyticsdata_layer_version", lit("2.0")) \
+            .withColumn("created_timestamp", current_timestamp()) \
+            .withColumn("data_source", lit("all_cleaned_data"))
         
-        # Location metrics
-        df_location_metrics = df_cleaneddata.groupBy("out/in") \
+        # Location metrics - now using ALL cleaned data
+        df_location_metrics = analytics_source_data.groupBy("out/in") \
             .agg(
                 count("*").alias("reading_count"),
                 avg("temp").alias("avg_temperature"),
                 min("temp").alias("min_temperature"),
                 max("temp").alias("max_temperature")
             ) \
-            .withColumn("analyticsdata_layer_version", lit("1.0")) \
-            .withColumn("created_timestamp", current_timestamp())
+            .withColumn("analyticsdata_layer_version", lit("2.0")) \
+            .withColumn("created_timestamp", current_timestamp()) \
+            .withColumn("data_source", lit("all_cleaned_data"))
         
-        # Time-based metrics
-        df_time_metrics = df_cleaneddata.withColumn("hour", hour(to_timestamp(col("noted_date"), "yyyy-MM-dd HH:mm:ss"))) \
+        # Time-based metrics - now using ALL cleaned data
+        df_time_metrics = analytics_source_data.withColumn("hour", hour(to_timestamp(col("noted_date"), "yyyy-MM-dd HH:mm:ss"))) \
             .groupBy("hour") \
             .agg(
                 count("*").alias("reading_count"),
                 avg("temp").alias("avg_temperature")
             ) \
-            .withColumn("analyticsdata_layer_version", lit("1.0")) \
-            .withColumn("created_timestamp", current_timestamp())
+            .withColumn("analyticsdata_layer_version", lit("2.0")) \
+            .withColumn("created_timestamp", current_timestamp()) \
+            .withColumn("data_source", lit("all_cleaned_data"))
         
-        # Quality summary
-        total_records = df_cleaneddata.count()
-        quality_score = df_cleaneddata.agg(avg("data_quality_score")).collect()[0][0]
+        # Quality summary - now using ALL cleaned data
+        total_records = analytics_source_data.count()
+        quality_score = analytics_source_data.agg(avg("data_quality_score")).collect()[0][0]
         
         df_quality_summary = spark.createDataFrame([{
             "total_records": total_records,
             "avg_quality_score": quality_score,
-            "high_quality_records": df_cleaneddata.filter(col("data_quality_score") >= 0.8).count(),
-            "medium_quality_records": df_cleaneddata.filter((col("data_quality_score") >= 0.5) & (col("data_quality_score") < 0.8)).count(),
-            "low_quality_records": df_cleaneddata.filter(col("data_quality_score") < 0.5).count(),
-            "analyticsdata_layer_version": "1.0",
-            "created_timestamp": datetime.now()
+            "high_quality_records": analytics_source_data.filter(col("data_quality_score") >= 0.8).count(),
+            "medium_quality_records": analytics_source_data.filter((col("data_quality_score") >= 0.5) & (col("data_quality_score") < 0.8)).count(),
+            "low_quality_records": analytics_source_data.filter(col("data_quality_score") < 0.5).count(),
+            "analyticsdata_layer_version": "2.0",
+            "created_timestamp": datetime.now(),
+            "data_source": "all_cleaned_data"
         }])
         
         # Create tables and write data
@@ -1029,11 +1057,12 @@ def analyticsdata_layer_processing(spark, df_cleaneddata, db_url, db_properties)
             # Create table if it doesn't exist (simple approach)
             create_simple_table(spark, df_processed_analytics, table_name, db_url, db_properties)
             
-            # Write to PostgreSQL using OVERWRITE (Gold Layer - recreate each time)
-            logger.warning(f"📝 Writing {df_processed_analytics.count()} records to {table_name} table using OVERWRITE (Gold Layer)")
+            # Write to PostgreSQL using OVERWRITE (Gold Layer - recreate each time with comprehensive data)
+            record_count = df_processed_analytics.count()
+            logger.info(f"📝 Writing {record_count} comprehensive analytics records to {table_name} table using OVERWRITE (Gold Layer)")
             write_dataframe_to_postgresql_overwrite(df_processed_analytics, table_name, db_url, db_properties)
         
-        logger.info("✅ AnalyticsData Layer completed")
+        logger.info("✅ AnalyticsData Layer completed with comprehensive analytics from all historical data")
         return df_device_metrics, df_location_metrics, df_time_metrics, df_quality_summary
         
     except Exception as e:
